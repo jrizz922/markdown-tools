@@ -1,6 +1,6 @@
 # markdown-tools
 
-This script is used to remove images and hyperlinks from markdown files in a specified directory. It uses regular expressions to find and remove the images and hyperlinks.
+This script is used to remove images and hyperlinks from markdown files in a specified directory. It uses regular expressions to find and remove the images and hyperlinks. rm_mdimages.py and rm_mdlinks.py are just the functions broken out.
 
 The directory can be provided as a command-line argument or input by the user when the script is run.
 
