@@ -1,6 +1,6 @@
 # Add a DNS Server On the Fly
 
-[Add a DNS Server On the Fly](https://www.commandlinefu.com/commands/browse/25/50/75/100)
+Add a DNS Server On the Fly
 
 `$ sudo systemd-resolve --interface <NombreInterfaz> --set-dns <IPDNS> --set-domain mydomain.com`
 

@@ -1,6 +1,6 @@
 # Display Disk Partition Sizes
 
-[\# Display Disk Partition Sizes](https://www.commandlinefu.com/commands/browse/25/50/75)
+\# Display Disk Partition Sizes
 
 `$ lsblk -o name,size`
 
