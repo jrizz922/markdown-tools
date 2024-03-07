@@ -1,74 +1,156 @@
-# This script is used to remove images and hyperlinks from markdown files in a specified directory. 
-# It uses regular expressions to find and remove the images and hyperlinks. 
-# The directory can be provided as a command-line argument or input by the user when the script is run.
+#!/usr/bin/env python3
 
-# * To remove images: python rm_md_extras.py -d /path/to/directory -i
-# * To remove hyperlinks: python rm_md_extras.py -d /path/to/directory -l
-# * To remove both: python rm_md_extras.py -d /path/to/directory -i -l
-
-import os
 import re
 import argparse
+from pathlib import Path
 
-# Function to remove images from markdown files in a specified directory
-def remove_images_from_markdown(directory):
-    try:
-        # Get a list of all markdown files in the directory
-        markdown_files = [file for file in os.listdir(directory) if file.endswith(".md")]
+def read_file(file_path):
+    """
+    Reads a file and returns its content.
 
-        # Iterate over each markdown file
-        for file in markdown_files:
-            file_path = os.path.join(directory, file)
+    Parameters:
+    file_path (str): The path to the file.
 
-            # Read the contents of the markdown file
-            with open(file_path, "r") as f:
-                content = f.read()
+    Returns:
+    str: The content of the file.
+    """
+    with open(file_path, 'r', encoding='utf-8') as file:
+        return file.read()
 
-            # Remove the images from the markdown file using regular expressions
-            updated_content = re.sub(r"!\[.*?\]\(.*?\)", "", content)
+def write_file(file_path, content):
+    """
+    Writes content to a file.
 
-            # Save the updated content back to the markdown file
-            with open(file_path, "w") as f:
-                f.write(updated_content)
-
-            print(f"Images removed from {file}")
-    except FileNotFoundError:
-        print(f"Directory {directory} not found.")
-    except Exception as e:
-        print(f"An error occurred: {str(e)}")
-
-# Function to remove hyperlinks from a markdown file
-def remove_hyperlinks(file_path):
-    with open(file_path, 'r') as file:
-        content = file.read()
-    content = re.sub(r'\[(.*?)\]\((.*?)\)', r'\1', content)
-    with open(file_path, 'w') as file:
+    Parameters:
+    file_path (str): The path to the file.
+    content (str): The content to write to the file.
+    """
+    with open(file_path, 'w', encoding='utf-8') as file:
         file.write(content)
 
-# Function to scan a directory and remove hyperlinks from all markdown files in it
-def scan_directory(directory):
-    for root, _, files in os.walk(directory):
-        for file in files:
-            if file.endswith('.md'):
-                remove_hyperlinks(os.path.join(root, file))
+def remove_images(content):
+    """
+    Removes image markdown from the content.
 
-# Main function
+    Parameters:
+    content (str): The content to process.
+
+    Returns:
+    str: The content with image markdown removed.
+    """
+    return re.sub(r"!\[.*?\]\(.*?\)", "", content)
+
+def remove_hyperlinks(content):
+    """
+    Removes hyperlink markdown from the content.
+
+    Parameters:
+    content (str): The content to process.
+
+    Returns:
+    str: The content with hyperlink markdown removed.
+    """
+    return re.sub(r'\[(.*?)\]\((.*?)\)', r'\1', content)
+
+def remove_all_except_header_and_code(content):
+    """
+    Removes all lines from the content except headers and code blocks.
+
+    Parameters:
+    content (str): The content to process.
+
+    Returns:
+    str: The content with only headers and code blocks.
+    """
+    lines = content.split('\n')
+    updated_content = []
+    inside_code_block = False
+    inside_inline_code_block = False
+
+    for line in lines:
+        if line.strip() == '```':
+            inside_code_block = not inside_code_block
+            continue
+
+        if '`' in line:
+            inside_inline_code_block = not inside_inline_code_block
+            line = line.replace('`', '')
+
+        if (inside_code_block or inside_inline_code_block) and line.lstrip().startswith(('#', '$')):
+            line = line.lstrip()[1:]
+
+        if line.strip() == '':
+            continue
+
+        if (line.startswith('#') and not inside_code_block) or inside_code_block or inside_inline_code_block:
+            updated_content.append(line)
+
+    return '\n'.join(updated_content)
+
+def remove_specific_line(content):
+    """
+    Removes any line that contains "#macos/dotfiles".
+
+    Parameters:
+    content (str): The content to process.
+
+    Returns:
+    str: The content with the lines containing "#macos/dotfiles" removed.
+    """
+    lines = content.split('\n')
+    lines = [line for line in lines if "#macos/dotfiles" not in line]
+    return '\n'.join(lines)
+
+def process_files_in_directory(directory, output_directory, process_function):
+    """
+    Processes all markdown files in a directory using a specified function.
+
+    Parameters:
+    directory (str): The directory to process.
+    output_directory (str): The directory to output the processed files.
+    process_function (function): The function to process the files.
+    """
+    directory_path = Path(directory)
+    output_directory_path = Path(output_directory)
+
+    if not output_directory_path.exists():
+        output_directory_path.mkdir(parents=True)
+
+    for file_path in directory_path.glob('**/*.md'):
+        content = read_file(file_path)
+        content = remove_specific_line(content)
+        updated_content = process_function(content)
+        new_file_path = output_directory_path / file_path.with_suffix('.sh').name
+        write_file(new_file_path, updated_content)
+
+        print(f"Processed file: {file_path.name}")
+        if process_function == remove_images:
+            print("Images were removed from the file.")
+        elif process_function == remove_hyperlinks:
+            print("Hyperlinks were removed from the file.")
+        elif process_function == remove_all_except_header_and_code:
+            print("All lines except headers and code blocks were removed from the file.")
+
 def main():
-    parser = argparse.ArgumentParser(description='Remove images and/or hyperlinks from markdown files in a specified directory.')
+    """
+    Main function to parse arguments and call the appropriate processing function.
+    """
+    parser = argparse.ArgumentParser(description='Remove images and/or hyperlinks from markdown files in a specified directory. Will also convert markdown files to shell scripts.')
     parser.add_argument('-d', '--directory', type=str, required=True, help='The directory where the markdown files are located.')
+    parser.add_argument('-o', '--output', type=str, help='The directory where the processed files will be saved. If not specified, a directory named "outputs" will be created in the directory where the markdown files are located.')
     parser.add_argument('-i', '--images', action='store_true', help='Remove images from the markdown files.')
     parser.add_argument('-l', '--links', action='store_true', help='Remove hyperlinks from the markdown files.')
-
+    parser.add_argument('-c', '--convert', action='store_true', help='Convert markdown files to shell scripts.')
     args = parser.parse_args()
 
-    # If the user wants to remove images
+    output_directory = args.output if args.output else Path(args.directory) / "outputs"
+
     if args.images:
-        remove_images_from_markdown(args.directory)
-
-    # If the user wants to remove hyperlinks
+        process_files_in_directory(args.directory, output_directory, remove_images)
     if args.links:
-        scan_directory(args.directory)
+        process_files_in_directory(args.directory, output_directory, remove_hyperlinks)
+    if args.convert:
+        process_files_in_directory(args.directory, output_directory, remove_all_except_header_and_code)
 
-# Entry point of the script
 if __name__ == "__main__":
     main()
