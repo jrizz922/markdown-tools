@@ -7,4 +7,4 @@ The directory can be provided as a command-line argument or input by the user wh
 * To remove images: `python rm_md_extras.py -d /path/to/directory -i`
 * To remove hyperlinks: `python rm_md_extras.py -d /path/to/directory -l`
 * To remove both: `python rm_md_extras.py -d /path/to/directory -i -l`
-* To convert exported markdown files to shell scripts: 'python rm_md_extras.py -c /path/to/directory -c'
+* To convert exported markdown files to shell scripts: `python rm_md_extras.py -c /path/to/directory -c`
